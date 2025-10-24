@@ -8,7 +8,11 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "微软雅黑", sans-serif; }
         body { background: #f5f7fa; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 20px; }
-        h1 { text-align: center; margin-bottom: 20px; color: #333; font-size: 22px; }  
+        h1 { text-align: center; margin-bottom: 20px; color: #333; font-size: 22px; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .view-history { background: #17a2b8; color: #fff; }
+        .new-topic { background: #ffc107; color: #212529; }
         .input-box { display: flex; gap: 10px; margin-bottom: 20px; }
         #需求输入 { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; }
         #执行按钮 { padding: 0 20px; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
@@ -17,11 +21,16 @@
         .加载中 { color: #666; font-style: italic; }
         .错误提示 { color: #dc3545; }
         .成功提示 { color: #28a745; }
+        .history-item { margin: 10px 0; padding: 8px; border-left: 3px solid #17a2b8; background: #e9f5f8; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>AI+Cloudflare一键执行助手</h1>
+        <div class="btn-group">
+            <button class="btn view-history" onclick="getHistory()">查看历史记录</button>
+            <button class="btn new-topic" onclick="newTopic()">开启新话题（清空历史）</button>
+        </div>
         <div class="input-box">
             <input type="text" id="需求输入" placeholder="输入需求，如「查我所有Cloudflare域名」">
             <button id="执行按钮">一键执行</button>
@@ -30,10 +39,8 @@
     </div>
 
     <script>
-        // ------------- 后续部署时要改的1处（现在不用填）-------------
+        // 仅域名是变量，需替换成你的Worker域名
         const WORKER_URL = "【替换成你的Cloudflare Worker域名，如https://xxx.workers.dev】"; 
-        // --------------------------------------------------------
-
         const 需求输入框 = document.getElementById("需求输入");
         const 执行按钮 = document.getElementById("执行按钮");
         const 结果区域 = document.getElementById("结果区域");
@@ -44,7 +51,6 @@
                 结果区域.innerHTML = '<span class="错误提示">请先输入需求！</span>';
                 return;
             }
-
             结果区域.innerHTML = '<span class="加载中">AI正在生成指令...（仅1次调用，省额度）</span>';
             try {
                 const 响应 = await fetch(WORKER_URL, {
@@ -52,7 +58,6 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ user需求 })
                 });
-
                 const 结果 = await 响应.json();
                 if (结果.错误) {
                     结果区域.innerHTML = `<span class="错误提示">操作失败：${结果.错误}</span>`;
@@ -62,13 +67,54 @@
                         <br><br>AI生成的指令：
                         <br>${JSON.stringify(结果.AI生成的指令, null, 2)}
                         <br><br>Cloudflare返回结果：
-                        <br>${JSON.stringify(结果.Cloudflare执行结果, null, 2)}  
+                        <br>${JSON.stringify(结果.Cloudflare执行结果, null, 2)}
                     `;
                 }
             } catch (e) {
                 结果区域.innerHTML = `<span class="错误提示">网络错误：${e.message}</span>`;
             }
         });
+
+        async function getHistory() {
+            结果区域.innerHTML = '<span class="加载中">加载历史记录...</span>';
+            try {
+                const 响应 = await fetch(WORKER_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 获取历史: true })
+                });
+                const 历史记录 = JSON.parse(await 响应.text()) || [];
+                if (历史记录.length === 0) {
+                    结果区域.innerHTML = '<span class="提示">暂无历史记录</span>';
+                    return;
+                }
+                结果区域.innerHTML = 历史记录.map(item => `
+                    <div class="history-item">
+                        <strong>时间：</strong>${new Date(item.时间).toLocaleString()}<br>
+                        <strong>需求：</strong>${item.需求}<br>
+                        <strong>AI指令：</strong>${JSON.stringify(item.AI指令, null, 2)}<br>
+                        <strong>CF结果：</strong>${JSON.stringify(item.CF结果, null, 2)}
+                    </div>
+                `).join("");
+            } catch (e) {
+                结果区域.innerHTML = `<span class="错误提示">获取历史失败：${e.message}</span>`;
+            }
+        }
+
+        async function newTopic() {
+            结果区域.innerHTML = '<span class="加载中">正在清空历史...</span>';
+            try {
+                await fetch(WORKER_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 清空历史: true })
+                });
+                结果区域.innerHTML = '<span class="成功提示">已开启新话题，历史记录已清空</span>';
+                需求输入框.value = "";
+            } catch (e) {
+                结果区域.innerHTML = `<span class="错误提示">清空历史失败：${e.message}</span>`;
+            }
+        }
 
         需求输入框.addEventListener("keypress", (e) => {
             if (e.key === "Enter") 执行按钮.click();
