@@ -1,14 +1,16 @@
-// 单个Worker整合：AI生成指令 + Cloudflare执行 + KV历史存储 + 新话题清空
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request))
-})
+// 适配 ES Modules 语法（Cloudflare 最新要求）
+export default {
+  async fetch(request) {
+    return handleRequest(request);
+  }
+};
 
-// 硬编码的密钥和KV信息
+// ------------- 已硬编码的密钥和KV信息（无需修改）-------------
 const AI_API_KEY = "a345ac3e-5252-49ce-a7be-c27d76264178"; // 你的火山AI API Key
 const CF_API_TOKEN = "Psl0i4hu10tjX20l8qIM1zyHTxWmiQuXYN0p5Nwy"; // 你的Cloudflare API令牌
-const ALLOWED_ORIGIN = "【替换成你的Cloudflare Pages域名，如https://xxx.pages.dev】"; // 仅域名变量
-const HISTORY_KV_NAME = "2"; // 你创建的KV名称
-const HISTORY_KV_ID = "ca3f80ee6eff412fbd123995c4b3e152"; // 你创建的KV ID
+const ALLOWED_ORIGIN = "【替换成你的Cloudflare Pages域名，如https://xxx.pages.dev】"; // 仅需改这处域名
+const HISTORY_KV_NAME = "2"; // 你的KV名称
+const HISTORY_KV_ID = "ca3f80ee6eff412fbd123995c4b3e152"; // 你的KV ID
 
 // 基础配置
 const AI_MODEL = "deepseek-r1";
@@ -24,7 +26,7 @@ async function handleRequest(request) {
   }
 
   // 2. 解析请求参数（支持：执行操作、获取历史、清空历史）
-  const { user需求, 获取历史 = false, 清空历史 = false } = await request.json();
+  const { user需求, 获取历史 = false, 清空历史 = false } = await request.json().catch(() => ({}));
 
   // 3. 清空历史逻辑（开启新话题时触发）
   if (清空历史) {
@@ -98,7 +100,7 @@ async function handleRequest(request) {
     await kvNamespace.put(HISTORY_KEY, JSON.stringify(历史列表.slice(0, 20))); // 只存最近20条
 
     // 5.4 返回结果给前端
-    return new Response(JSON.stringify({
+    return new Response(JSON.stringify({  
       AI生成的指令: cf指令,
       Cloudflare执行结果: cfResult
     }), {
