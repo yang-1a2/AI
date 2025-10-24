@@ -8,7 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "微软雅黑", sans-serif; }
         body { background: #f5f7fa; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 20px; }
-        h1 { text-align: center; margin-bottom: 20px; color: #333; font-size: 22px; }
+        h1 { text-align: center; margin-bottom: 20px; color: #333; font-size: 22px; }  
         .input-box { display: flex; gap: 10px; margin-bottom: 20px; }
         #需求输入 { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; }
         #执行按钮 { padding: 0 20px; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
@@ -30,15 +30,14 @@
     </div>
 
     <script>
-        // ------------- 仅需修改这1处 -------------
-        const WORKER_URL = "https://ai-cf-helper.你的账户.workers.dev"; // 替换成第一步的Worker域名
-        // --------------------------------------------
+        // ------------- 后续部署时要改的1处（现在不用填）-------------
+        const WORKER_URL = "【替换成你的Cloudflare Worker域名，如https://xxx.workers.dev】"; 
+        // --------------------------------------------------------
 
         const 需求输入框 = document.getElementById("需求输入");
         const 执行按钮 = document.getElementById("执行按钮");
         const 结果区域 = document.getElementById("结果区域");
 
-        // 点击按钮触发一键操作
         执行按钮.addEventListener("click", async () => {
             const user需求 = 需求输入框.value.trim();
             if (!user需求) {
@@ -48,7 +47,6 @@
 
             结果区域.innerHTML = '<span class="加载中">AI正在生成指令...（仅1次调用，省额度）</span>';
             try {
-                // 只发1次请求给Worker，Worker内部完成AI+Cloudflare操作
                 const 响应 = await fetch(WORKER_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -64,7 +62,7 @@
                         <br><br>AI生成的指令：
                         <br>${JSON.stringify(结果.AI生成的指令, null, 2)}
                         <br><br>Cloudflare返回结果：
-                        <br>${JSON.stringify(结果.Cloudflare执行结果, null, 2)}
+                        <br>${JSON.stringify(结果.Cloudflare执行结果, null, 2)}  
                     `;
                 }
             } catch (e) {
@@ -72,7 +70,6 @@
             }
         });
 
-        // 按回车也能执行
         需求输入框.addEventListener("keypress", (e) => {
             if (e.key === "Enter") 执行按钮.click();
         });
